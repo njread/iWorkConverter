@@ -1,0 +1,19 @@
+{
+  "total_files": 2,
+  "successful": 1,
+  "failed": 1,
+  "errors": [
+    "Failed to convert Demo.key: snap header type not 0"
+  ],
+  "processed_files": [
+    {
+      "original_file": "demo_local first copy.key",
+      "output_path": "extracted/demo_local first copy_extracted.txt",
+      "file_size": 0,
+      "process_time": "466.895542ms"
+    }
+  ],
+  "start_time": "2025-06-27T14:35:37.422426-07:00",
+  "end_time": "2025-06-27T14:35:38.865029-07:00",
+  "duration": 1442597209
+}

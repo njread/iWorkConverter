@@ -1,0 +1,15 @@
+# Extracted from: demo_local first.key
+# File ID: 1907486389583
+# Size: 0 bytes
+# Modified: 0001-01-01T00:00:00Z
+# Extracted: 2025-06-27T14:39:19-07:00
+# Extension: .key
+
+--------------------------------------------------
+
+Hello world
+
+
+This is some subtext in a bullet 
+This is slide 2
+This is some subtext in a bullet 

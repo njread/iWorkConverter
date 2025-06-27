@@ -1,0 +1,12 @@
+{
+  "total_files": 1,
+  "successful": 0,
+  "failed": 1,
+  "errors": [
+    "Failed to convert Demo.key: snap header type not 0"
+  ],
+  "processed_files": [],
+  "start_time": "2025-06-27T14:29:21.764971-07:00",
+  "end_time": "2025-06-27T14:29:22.882025-07:00",
+  "duration": 1117049292
+}
