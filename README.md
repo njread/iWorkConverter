@@ -1,116 +1,262 @@
-# iWork utilities
+# iWork Converter with Box Integration
 
-This project contains a tool for converting Pages files to HTML. The initial motivation was to recover my older Pages
-files, but I got carried away and wrote a converter for the current format and the older iOS format.
+A comprehensive tool for converting Apple iWork files (Pages, Numbers, Keynote) to HTML and text formats, with integrated Box cloud storage support for automated batch processing.
 
-It is very much a work in progress, but hopefully someone finds it useful.
+## Features
 
-# Setup process
+- **Local File Conversion**: Convert individual iWork files to HTML or text
+- **Box Cloud Integration**: Automatically discover and process iWork files from Box folders
+- **Multiple Format Support**: Pages (.pages), Numbers (.numbers), Keynote (.keynote/.key)
+- **OCR Capabilities**: Extract text from embedded images using Tesseract
+- **Batch Processing**: Process entire Box folders with detailed reporting
+- **Legacy Support**: Works with Pages'08, Pages'09, and iOS '.pages-tef' formats
 
-Download and build
+## Quick Start
 
-```bash
-go get https://github.com/orcastor/iwork-converter/iwork2html
-go get https://github.com/orcastor/iwork-converter/iwork2text
-```
-
-# Usage
-
-Export path
+### Build the Enhanced Converter
 
 ```bash
-export PATH=$PATH:$(go env GOPATH)/bin
+# Clone the repository
+git clone https://github.com/orcastor/iwork-converter.git
+cd iwork-converter
+
+# Build the enhanced converter with Box support
+go build -o iwork-converter main.go
 ```
 
-Run conventer
+## Usage
+
+### Single File Conversion (Original Functionality)
 
 ```bash
-./iwork-converter infile.pages outfile.html
+# Convert to HTML (default)
+./iwork-converter document.pages document.html
+./iwork-converter spreadsheet.numbers spreadsheet.html
+./iwork-converter presentation.keynote presentation.html
+
+# Convert to text
+./iwork-converter document.pages document.txt
+./iwork-converter presentation.key presentation.txt
 ```
 
-# iwork2html
+### Box Cloud Processing (New Feature)
 
-Support convert to json / html format
+#### Basic Box Usage
 
-# iwork2text
+```bash
+# Process all iWork files in Box root folder
+./iwork-converter -box -token="your_box_access_token"
 
-Support OCR function injection
+# Process specific Box folder
+./iwork-converter -box -token="your_token" -folder="folder_id"
 
-``` go
+# Convert to HTML format
+./iwork-converter -box -token="your_token" -format="html"
+
+# Custom output directory
+./iwork-converter -box -token="your_token" -output="./my_extracts"
+```
+
+#### Box Configuration Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-box` | Enable Box processing mode | false |
+| `-token` | Box API access token | (required) |
+| `-folder` | Box folder ID | "0" (root) |
+| `-format` | Output format: "txt" or "html" | "txt" |
+| `-output` | Output directory | "./extracted" |
+| `-temp` | Temporary directory | "./temp" |
+
+#### Environment Variables (Alternative)
+
+```bash
+export BOX_ACCESS_TOKEN="your_access_token"
+export BOX_FOLDER_ID="folder_id"
+export OUTPUT_DIR="./output"
+export TEMP_DIR="./temp"
+
+# Then run without flags
+./iwork-converter -box
+```
+
+## Box API Setup
+
+1. Go to [Box Developer Console](https://developer.box.com/)
+2. Create a new "Custom App"
+3. Choose "Standard OAuth 2.0" authentication
+4. Generate a Developer Token for testing
+5. For production, implement full OAuth 2.0 flow
+
+## Output Examples
+
+### Text Output with Metadata
+
+```
+# Extracted from: MyDocument.pages
+# File ID: 123456789
+# Size: 1048576 bytes
+# Modified: 2025-06-27T10:30:00Z
+# Extracted: 2025-06-27T14:30:22Z
+# Extension: .pages
+
+--------------------------------------------------
+
+[Extracted document text content...]
+```
+
+### Processing Report
+
+```json
+{
+  "total_files": 5,
+  "successful": 4,
+  "failed": 1,
+  "errors": ["Failed to convert corrupted.pages: invalid format"],
+  "processed_files": [
+    {
+      "original_file": "document.pages",
+      "output_path": "./extracted/document_extracted.txt",
+      "file_size": 2048,
+      "process_time": "1.2s"
+    }
+  ],
+  "start_time": "2025-06-27T14:30:00Z",
+  "end_time": "2025-06-27T14:35:22Z",
+  "duration": "5m22s"
+}
+```
+
+## Advanced Features
+
+### OCR Support for Embedded Images
+
+The converter supports OCR extraction from embedded images using Tesseract:
+
+```go
 func ConvertString(in string, ocr func(io.Reader) (string, error)) (string, error)
 ```
 
-You can use [danlock/gogosseract](https://github.com/danlock/gogosseract) as backend.
+#### Example OCR Implementation
 
-``` go
+```go
+import "github.com/danlock/gogosseract"
+
 var tess *gogosseract.Tesseract
 
 func InitTesseractOCR(model string) error {
-	trainingDataFile, err := os.Open(model)
-	if err != nil {
-		return err
-	}
+    trainingDataFile, err := os.Open(model)
+    if err != nil {
+        return err
+    }
 
-	ctx := context.TODO()
-	cfg := gogosseract.Config{
-		Language:     "eng",
-		TrainingData: trainingDataFile,
-	}
-	// While Tesseract's logs are very useful for debugging, you have the option to silence or redirect it
-	cfg.Stderr = io.Discard
-	cfg.Stdout = io.Discard
-	// Compile the Tesseract WASM and run it, loading in the TrainingData and setting any Config Variables provided
-	tess, err = gogosseract.New(ctx, cfg)
-	if err != nil {
-		return err
-	}
-	return nil
+    ctx := context.TODO()
+    cfg := gogosseract.Config{
+        Language:     "eng",
+        TrainingData: trainingDataFile,
+    }
+    cfg.Stderr = io.Discard
+    cfg.Stdout = io.Discard
+    
+    tess, err = gogosseract.New(ctx, cfg)
+    if err != nil {
+        return err
+    }
+    return nil
 }
 
 func OCR(reader io.Reader) (string, error) {
-	if tess == nil {
-		return "", fmt.Errorf("tesseract not initialized")
-	}
+    if tess == nil {
+        return "", fmt.Errorf("tesseract not initialized")
+    }
 
-	ctx := context.TODO()
-	err := tess.LoadImage(ctx, reader, gogosseract.LoadImageOptions{})
-	if err != nil {
-		return "", err
-	}
+    ctx := context.TODO()
+    err := tess.LoadImage(ctx, reader, gogosseract.LoadImageOptions{})
+    if err != nil {
+        return "", err
+    }
 
-	var text string
-	text, err = tess.GetText(ctx, nil)
-	if err != nil {
-		return "", err
-	}
-	return text, nil
+    text, err := tess.GetText(ctx, nil)
+    if err != nil {
+        return "", err
+    }
+    return text, nil
 }
 ```
 
-## Pages '13
+## Supported File Formats
 
-I'm building on [the work of Sean Patrick O'Brien](https://github.com/obriensp/iWorkFileFormat) on github. He determined
-the base format of the `.iwa` files in the iWork'13 were a snappy compressed sequence of protobuf-encoded records and wrote
-[a tool to extract the protobuf definitions from the executables](https://github.com/obriensp/proto-dump). Those `.proto`
-files are included in the `proto` directory. He also extracted tables of `int` to `type`, needed to decode the `.iwa`
-archives. Those `.json` files are included in this project.
+### Current iWork Formats
+- **Pages**: `.pages` documents
+- **Numbers**: `.numbers` spreadsheets  
+- **Keynote**: `.keynote` and `.key` presentations
 
-I've used the json files to generate some of the code in the `index` directory. (Using the code found in `codegen`.) I ran
-`protoc` on the `.proto` files and cleaned up the results so they would compile.
+### Legacy Formats
+- **Pages'08**: Bundle format directories
+- **Pages'09**: Zip-based format
+- **iOS Pages**: `.pages-tef` bundles for iCloud
 
-On top of this, I wrote the `index` package, which loads the database into memory. And I wrote `iwork2html` which will load
-a pages file and render the contents to HTML.
+### Format Compatibility Notes
 
-## iOS '.pages-tef' files
+- Works best with iWork files from 2013-2019
+- Some newer Keynote files may show "Unknown type" warnings (normal behavior)
+- Files using unsupported compression may fail with "snap header" errors
 
-Before the format change in Pages'13, the iOS version of pages introduced a `.pages-tef` bundle format for iCloud storage.
-It turns out that the sqlite database within these bundles mirror the '13 format. The `iwork2html` program handles these
-files too.
+## Technical Architecture
 
+### Core Components
 
-## Pages'08 and Pages'09
+1. **File Format Parsing**: Based on [Sean Patrick O'Brien's iWorkFileFormat](https://github.com/obriensp/iWorkFileFormat)
+2. **Protobuf Decoding**: Handles snappy-compressed protobuf records in `.iwa` files
+3. **Box API Integration**: RESTful API client for cloud file access
+4. **Batch Processing**: Concurrent file processing with error handling
 
-I have included an XSLT file (`pages08tohtml.xsl`) that will process the xml from Pages'08 and Pages'09 files to HTML. You can apply it to the
-index.xml.gz in a Pages'08 file bundle (which is a directory) or the index.xml found within a Pages'09 file
-(which is just a zip file).  For now I'll leave it as an exercise to write a wrapper script.
+### Dependencies
 
+- Go 1.19+
+- Standard library only (no external dependencies for Box integration)
+- Optional: [gogosseract](https://github.com/danlock/gogosseract) for OCR
+
+## Legacy XSLT Support
+
+For Pages'08 and Pages'09 files, use the included XSLT transformer:
+
+```bash
+# Apply to Pages'08 bundle
+xsltproc pages08tohtml.xsl /path/to/document.pages/index.xml.gz
+
+# Apply to Pages'09 zip file  
+xsltproc pages08tohtml.xsl /path/to/extracted/index.xml
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Box Authentication Errors (401)**
+   - Verify access token is valid and not expired
+   - Check Box app permissions and scopes
+
+2. **File Conversion Errors**
+   - "Unknown type" warnings are normal for newer files
+   - "snap header" errors indicate unsupported compression
+   - Try with different file versions or formats
+
+3. **Permission Errors**
+   - Ensure read/write access to temp and output directories
+   - Verify Box folder access permissions
+
+### Getting Help
+
+- Check processing reports for detailed error information
+- Enable verbose logging for debugging
+- Test with simple documents first
+- Verify file format compatibility
+
+## Contributing
+
+This project builds upon the excellent work of [Sean Patrick O'Brien](https://github.com/obriensp/iWorkFileFormat) for iWork file format reverse engineering. The Box integration extends the original converter to support cloud-based batch processing workflows.
+
+## License
+
+[Include your license information here]
